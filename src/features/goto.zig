@@ -240,7 +240,7 @@ pub fn gotoHandler(
 ) Server.Error!lsp.ResultType("textDocument/definition") {
     if (request.position.character == 0) return null;
 
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
 
     var analyser = Analyser.init(
         server.allocator,

@@ -1412,7 +1412,7 @@ fn willSaveWaitUntilHandler(server: *Server, arena: std.mem.Allocator, request: 
 fn semanticTokensFullHandler(server: *Server, arena: std.mem.Allocator, request: types.SemanticTokensParams) Error!?types.SemanticTokens {
     if (server.config.semantic_tokens == .none) return null;
 
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
 
     var analyser = server.initAnalyser(handle);
     defer analyser.deinit();
@@ -1433,7 +1433,7 @@ fn semanticTokensFullHandler(server: *Server, arena: std.mem.Allocator, request:
 fn semanticTokensRangeHandler(server: *Server, arena: std.mem.Allocator, request: types.SemanticTokensRangeParams) Error!?types.SemanticTokens {
     if (server.config.semantic_tokens == .none) return null;
 
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
     const loc = offsets.rangeToLoc(handle.tree.source, request.range, server.offset_encoding);
 
     var analyser = server.initAnalyser(handle);
@@ -1450,7 +1450,7 @@ fn semanticTokensRangeHandler(server: *Server, arena: std.mem.Allocator, request
 }
 
 fn completionHandler(server: *Server, arena: std.mem.Allocator, request: types.CompletionParams) Error!lsp.ResultType("textDocument/completion") {
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
 
     const source_index = offsets.positionToIndex(handle.tree.source, request.position, server.offset_encoding);
 
@@ -1463,7 +1463,7 @@ fn completionHandler(server: *Server, arena: std.mem.Allocator, request: types.C
 }
 
 fn signatureHelpHandler(server: *Server, arena: std.mem.Allocator, request: types.SignatureHelpParams) Error!?types.SignatureHelp {
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
 
     if (request.position.character == 0) return null;
 
@@ -1542,7 +1542,7 @@ fn gotoDeclarationHandler(server: *Server, arena: std.mem.Allocator, request: ty
 fn hoverHandler(server: *Server, arena: std.mem.Allocator, request: types.HoverParams) Error!?types.Hover {
     if (request.position.character == 0) return null;
 
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
     const source_index = offsets.positionToIndex(handle.tree.source, request.position, server.offset_encoding);
 
     const markup_kind: types.MarkupKind = if (server.client_capabilities.hover_supports_md) .markdown else .plaintext;
@@ -1554,14 +1554,14 @@ fn hoverHandler(server: *Server, arena: std.mem.Allocator, request: types.HoverP
 }
 
 fn documentSymbolsHandler(server: *Server, arena: std.mem.Allocator, request: types.DocumentSymbolParams) Error!lsp.ResultType("textDocument/documentSymbol") {
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
     return .{
         .array_of_DocumentSymbol = try document_symbol.getDocumentSymbols(arena, handle.tree, server.offset_encoding),
     };
 }
 
 fn formattingHandler(server: *Server, arena: std.mem.Allocator, request: types.DocumentFormattingParams) Error!?[]types.TextEdit {
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
 
     if (handle.tree.errors.len != 0) return null;
 
@@ -1589,7 +1589,7 @@ fn documentHighlightHandler(server: *Server, arena: std.mem.Allocator, request: 
 }
 
 fn inlayHintHandler(server: *Server, arena: std.mem.Allocator, request: types.InlayHintParams) Error!?[]types.InlayHint {
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
 
     // The Language Server Specification does not provide a client capabilities that allows the client to specify the MarkupKind of inlay hints.
     const hover_kind: types.MarkupKind = if (server.client_capabilities.hover_supports_md) .markdown else .plaintext;
@@ -1610,7 +1610,7 @@ fn inlayHintHandler(server: *Server, arena: std.mem.Allocator, request: types.In
 }
 
 fn codeActionHandler(server: *Server, arena: std.mem.Allocator, request: types.CodeActionParams) Error!lsp.ResultType("textDocument/codeAction") {
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
 
     // as of right now, only ast-check errors may get a code action
     if (handle.tree.errors.len != 0) return null;
@@ -1648,13 +1648,13 @@ fn codeActionHandler(server: *Server, arena: std.mem.Allocator, request: types.C
 }
 
 fn foldingRangeHandler(server: *Server, arena: std.mem.Allocator, request: types.FoldingRangeParams) Error!?[]types.FoldingRange {
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
 
     return try folding_range.generateFoldingRanges(arena, handle.tree, server.offset_encoding);
 }
 
 fn selectionRangeHandler(server: *Server, arena: std.mem.Allocator, request: types.SelectionRangeParams) Error!?[]types.SelectionRange {
-    const handle = server.document_store.getHandle(request.textDocument.uri) orelse return null;
+    const handle = server.document_store.getOrLoadHandle(request.textDocument.uri) orelse return null;
 
     return try selection_range.generateSelectionRanges(arena, handle, request.positions, server.offset_encoding);
 }
@@ -2009,7 +2009,7 @@ fn processJob(server: *Server, job: Job, wait_group: ?*std.Thread.WaitGroup) voi
             server.allocator.free(response);
         },
         .generate_diagnostics => |uri| {
-            const handle = server.document_store.getHandle(uri) orelse return;
+            const handle = server.document_store.getOrLoadHandle(uri) orelse return;
             var arena_allocator = std.heap.ArenaAllocator.init(server.allocator);
             defer arena_allocator.deinit();
             const diagnostics = diagnostics_gen.generateDiagnostics(server, arena_allocator.allocator(), handle) catch return;
